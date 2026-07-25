@@ -126,3 +126,42 @@ class NumberingService:
         counter_key = f"lab::{fmt}::{pkey}"
         seq = self._next_seq(counter_key)
         return self.render(fmt, seq, today)
+
+    # ── explicit "start from N" override ──
+    def set_next_sequence(self, kind: str, next_value: int) -> dict:
+        """
+        Sets the counter so the NEXT generated number for `kind`
+        ('patient' or 'lab') will be exactly `next_value`. Computes the
+        SAME counter key next_patient_number()/next_lab_number() use
+        internally — this only affects the currently-active format +
+        currently-active reset period; changing either later starts a
+        fresh counter at 1, same as it always has.
+        """
+        if kind not in ("patient", "lab"):
+            raise ValueError("kind must be 'patient' or 'lab'")
+        if next_value < 1:
+            raise ValueError("next_value must be at least 1")
+
+        fmt = self.get(f"{kind}_number_format")
+        policy = self.get(f"{kind}_reset_policy")
+        today = date.today()
+        pkey = self._period_key(policy, today)
+        counter_key = f"{kind}::{fmt}::{pkey}"
+        full_key = f"seq::{counter_key}"
+
+        # _next_seq() always increments before returning, so store one below
+        # the target so the very next call yields next_value.
+        stored = next_value - 1
+        row = self.db.query(SystemConfig).filter(SystemConfig.key == full_key).first()
+        if row:
+            row.value = str(stored)
+        else:
+            row = SystemConfig(key=full_key, value=str(stored))
+            self.db.add(row)
+        self.db.commit()
+
+        return {
+            "kind": kind,
+            "next_value": next_value,
+            "preview": self.render(fmt, next_value, today),
+        }

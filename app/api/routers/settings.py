@@ -60,6 +60,25 @@ def preview_format(fmt: str, db: Session = Depends(get_db)):
     return {"valid": ok, "message": msg, "preview": svc.preview(fmt) if ok else None}
 
 
+class SetNextSequence(BaseModel):
+    kind: str   # "patient" | "lab"
+    next_value: int
+
+
+@router.post("/numbering/set-next")
+def set_next_sequence(payload: SetNextSequence, db: Session = Depends(get_db), current_user=Depends(get_current_user)):
+    from fastapi import HTTPException
+    svc = NumberingService(db)
+    if payload.kind not in ("patient", "lab"):
+        raise HTTPException(status_code=400, detail="kind must be 'patient' or 'lab'")
+    if payload.next_value < 1:
+        raise HTTPException(status_code=400, detail="next_value must be at least 1")
+    try:
+        return svc.set_next_sequence(payload.kind, payload.next_value)
+    except ValueError as e:
+        raise HTTPException(status_code=400, detail=str(e))
+
+
 # ══════════════════════════════════════════════════════════════════
 # Report Settings — appearance / content toggles for lab result PDFs.
 # Stored as a single JSON blob in SystemConfig under key "report_settings".
