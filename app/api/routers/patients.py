@@ -33,6 +33,7 @@ def search_patients(
     q: Optional[str] = Query(None), 
     # Add the date filter for the daily queue
     created_date: Optional[str] = Query(None),
+    order: Optional[str] = Query("desc"),
     current_user: User = Depends(get_current_user),
     db: Session = Depends(get_db),
 ):
@@ -40,7 +41,7 @@ def search_patients(
     
     # Logic: If date is provided and q is not, fetch today's queue
     # Otherwise, perform the standard search
-    return service.search(q=q, created_date=created_date)
+    return service.search(q=q, created_date=created_date, order=order)
 
 @router.get("/{patient_id}", response_model=PatientOut)
 def get_patient(

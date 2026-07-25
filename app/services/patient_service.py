@@ -4,7 +4,7 @@ from __future__ import annotations
 from datetime import datetime, timedelta, timezone
 from fastapi import HTTPException
 from sqlalchemy.orm import Session
-from sqlalchemy import or_, func
+from sqlalchemy import or_, func, asc, desc
 from sqlalchemy.exc import IntegrityError
 
 from app.models.patient import Patient
@@ -135,11 +135,18 @@ class PatientService:
         self.db.refresh(p)
         return p
 
-    def search(self, q: str | None = None, created_date: str | None = None) -> list[Patient]:
+    def search(self, q: str | None = None, created_date: str | None = None, order: str = "desc") -> list[Patient]:
         """
         Search by query string (Name, Phone, ID) or filter by specific date.
+
+        `order` only affects the plain search / "all patients" paths below —
+        the created_date (queue) path always returns FIFO (oldest-first),
+        which was already its behavior and is left unchanged. Default "desc"
+        preserves existing behavior for Lab and Blood Bank callers; Cashier
+        opts into "asc" (FIFO) explicitly.
         """
         query = self.db.query(Patient)
+        order_fn = asc if (order or "").lower() == "asc" else desc
 
         if self.branch_id:
             query = query.filter(Patient.branch_id == self.branch_id)
@@ -154,7 +161,7 @@ class PatientService:
                         Patient.patient_no.ilike(f"%{search_str}%"),
                     )
                 )
-                .order_by(Patient.id.desc())
+                .order_by(order_fn(Patient.id))
                 .limit(50)
                 .all()
             )
@@ -194,7 +201,7 @@ class PatientService:
 
                 return (
                     query.filter(Patient.id.in_(patient_ids))
-                    .order_by(Patient.created_at.asc())
+                    .order_by(order_fn(Patient.created_at))
                     .all()
                 )
             except ValueError:
@@ -202,7 +209,7 @@ class PatientService:
         
         # No query and no date → "All Patients" view (recent, bounded)
         return (
-            query.order_by(Patient.id.desc())
+            query.order_by(order_fn(Patient.id))
             .limit(200)
             .all()
         )

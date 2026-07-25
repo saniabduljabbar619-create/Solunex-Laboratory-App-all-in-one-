@@ -157,6 +157,8 @@ def list_results(
     db: Session = Depends(get_db),
     patient_id: Optional[int] = Query(default=None),
     status: Optional[str] = Query(default=None),
+    created_date: Optional[str] = Query(default=None),
+    order: Optional[str] = Query(default="desc"),
     limit: int = Query(default=50, ge=1, le=200),
     offset: int = Query(default=0, ge=0),
     x_role: str = Header(default="labtech"),
@@ -165,6 +167,8 @@ def list_results(
     rows, total = service.list(
         patient_id=patient_id,
         status=status,
+        created_date=created_date,
+        order=order,
         limit=limit,
         offset=offset,
         role=x_role,

@@ -3,11 +3,11 @@
 from __future__ import annotations
 
 from typing import Optional, Tuple, List
-from datetime import datetime
+from datetime import datetime, timezone, timedelta
 
 from fastapi import HTTPException
 from sqlalchemy.orm import Session
-from sqlalchemy import desc, func
+from sqlalchemy import desc, asc, func
 
 from app.models.patient import Patient
 from app.models.test_template import TestTemplate
@@ -213,7 +213,7 @@ class ResultService:
 
         return r
 
-    def list(self, patient_id=None, status=None, limit=50, offset=0, role="labtech") -> tuple[list[TestResult], int]:
+    def list(self, patient_id=None, status=None, created_date=None, order="desc", limit=50, offset=0, role="labtech") -> tuple[list[TestResult], int]:
         role = (role or "").lower().strip()
         if role not in {"labtech", "labstaff", "cashier", "supervisor", "admin"}:
             raise HTTPException(status_code=403, detail="Invalid role")
@@ -225,9 +225,24 @@ class ResultService:
             q = q.filter(TestResult.patient_id == patient_id)
         if status:
             q = q.filter(TestResult.status == ResultStatus(status.lower().strip()))
+        if created_date:
+            try:
+                day = datetime.strptime(created_date, "%Y-%m-%d")
+                tz_offset = timezone(timedelta(hours=1))  # Nigeria UTC+1, matches PatientService.search()
+
+                start_local = day.replace(hour=0, minute=0, second=0, microsecond=0, tzinfo=tz_offset)
+                end_local = start_local + timedelta(days=1)
+
+                start_utc = start_local.astimezone(timezone.utc).replace(tzinfo=None)
+                end_utc = end_local.astimezone(timezone.utc).replace(tzinfo=None)
+
+                q = q.filter(TestResult.created_at >= start_utc, TestResult.created_at < end_utc)
+            except ValueError:
+                pass  # bad date string → ignore filter rather than error the whole list
 
         total = q.count()
-        rows = q.order_by(desc(TestResult.created_at)).offset(offset).limit(limit).all()
+        order_fn = asc if (order or "").lower() == "asc" else desc
+        rows = q.order_by(order_fn(TestResult.created_at)).offset(offset).limit(limit).all()
         return rows, total
     
     
