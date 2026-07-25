@@ -140,7 +140,8 @@ def lab_queue(
     """
     Returns patients who have PAID test requests awaiting lab work,
     grouped by patient with their queued test count, highest priority,
-    and earliest request time (for FIFO ordering).
+    and earliest request time. Ordered by priority tier (emergency first),
+    then newest-request-first (LIFO) within each tier.
     """
     from app.models.patient import Patient
     from app.services.test_request_service import TestRequestService
@@ -196,8 +197,12 @@ def lab_queue(
             "phone": p.phone,
         })
 
-    # FIFO order, but emergencies/urgent float up
-    result.sort(key=lambda x: (priority_rank.get(x["priority"], 3), x["earliest"] or ""))
+    # Priority still escalates emergencies/urgent to the top. Within the same
+    # priority tier, newest request first (LIFO) — a stable two-pass sort:
+    # sort by timestamp descending first, then stable-sort by priority so the
+    # LIFO ordering within each tier survives the second pass.
+    result.sort(key=lambda x: x["earliest"] or "", reverse=True)
+    result.sort(key=lambda x: priority_rank.get(x["priority"], 3))
     return result
 
 
