@@ -312,17 +312,39 @@ def render_pdf(
     # position near the bottom (matches where the QR code already sat), so all
     # three always line up together instead of the stamp/signature floating
     # wherever the results table happened to end while the QR stayed fixed.
+    # Order: Signature (left) | Stamp (centered in the middle gap) | QR (right).
     sci_name = scientist_name or lab_profile.get("scientist_name", "")
     sci_qual = scientist_qualification or lab_profile.get("scientist_qualification", "")
 
     row_bottom = 20 * mm
-    row_top = 42 * mm       # 22mm tall — same height as the QR code and the old stamp box
-    qr_x = 15 * mm
+    row_top = 42 * mm       # 22mm tall — same height as the QR code and the stamp box
     qr_size = 22 * mm
-
-    # LEFT — official stamp box, immediately right of the QR code
-    stamp_x = qr_x + qr_size + 10 * mm
     stamp_w, stamp_h = 42 * mm, 22 * mm
+    sig_width = 60 * mm
+
+    # All X positions computed upfront, before any drawing — so the stamp's
+    # centering is correct even if QR generation fails below.
+    sig_left = 15 * mm
+    sig_right_edge = sig_left + sig_width
+    qr_x = w - 15 * mm - qr_size  # right-aligned to the margin
+    stamp_x = sig_right_edge + ((qr_x - sig_right_edge - stamp_w) / 2)
+
+    # LEFT — scientist signature (left-aligned now that it's the leftmost block)
+    c.setStrokeColor(colors.black)
+    c.setLineWidth(0.5)
+    c.line(sig_left, row_top - 2 * mm, sig_left + sig_width, row_top - 2 * mm)
+    c.setFont("Helvetica-Bold", 8)
+    if sci_name:
+        c.drawString(sig_left, row_top - 6 * mm, sci_name)
+    if sci_qual:
+        c.setFont("Helvetica", 7)
+        c.drawString(sig_left, row_top - 10 * mm, sci_qual)
+    c.setFont("Helvetica", 6.5)
+    c.setFillColor(colors.grey)
+    c.drawString(sig_left, row_bottom + 3 * mm, "Verified & Authorized by (Medical Laboratory Scientist)")
+    c.setFillColor(colors.black)
+
+    # MIDDLE — official stamp box, centered between signature and QR
     c.setStrokeColor(colors.grey)
     c.setLineWidth(0.6)
     c.rect(stamp_x, row_bottom, stamp_w, stamp_h)
@@ -331,23 +353,7 @@ def render_pdf(
     c.drawCentredString(stamp_x + stamp_w / 2, row_bottom + stamp_h / 2, "Official Lab Stamp")
     c.setFillColor(colors.black)
 
-    # RIGHT — scientist signature, same row
-    sig_right = w - 15 * mm
-    c.setStrokeColor(colors.black)
-    c.setLineWidth(0.5)
-    c.line(sig_right - 60 * mm, row_top - 2 * mm, sig_right, row_top - 2 * mm)
-    c.setFont("Helvetica-Bold", 8)
-    if sci_name:
-        c.drawRightString(sig_right, row_top - 6 * mm, sci_name)
-    if sci_qual:
-        c.setFont("Helvetica", 7)
-        c.drawRightString(sig_right, row_top - 10 * mm, sci_qual)
-    c.setFont("Helvetica", 6.5)
-    c.setFillColor(colors.grey)
-    c.drawRightString(sig_right, row_bottom + 3 * mm, "Verified & Authorized by (Medical Laboratory Scientist)")
-    c.setFillColor(colors.black)
-
-    # ──────────── QR CODE — same row as stamp + signature above ────────────
+    # ──────────── QR CODE — RIGHT, same row as stamp + signature above ────────────
     if result_sync_id:
         try:
             from app.services.barcode_service import generate_qr, get_portal_result_url
