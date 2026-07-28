@@ -134,6 +134,7 @@ def create_batch(
     
 @router.get("/lab-queue")
 def lab_queue(
+    scope: str = Query(default="today"),   # "today" | "late"
     current_user: User = Depends(get_current_user),
     db: Session = Depends(get_db),
 ):
@@ -142,17 +143,43 @@ def lab_queue(
     grouped by patient with their queued test count, highest priority,
     and earliest request time. Ordered by priority tier (emergency first),
     then newest-request-first (LIFO) within each tier.
+
+    scope="today" (default): only requests created today — this is the
+    working queue a lab scientist actually acts on day to day.
+    scope="late": everything created before today — the backlog, requested
+    explicitly. Also always returns late_count regardless of scope, so a
+    lab scientist can see backlog exists even while viewing today's queue —
+    deliberately not hiding it silently, since an old paid-but-unprocessed
+    request may be a real specimen still waiting, not just stale data.
     """
+    from datetime import datetime, timezone, timedelta
     from app.models.patient import Patient
     from app.services.test_request_service import TestRequestService
 
     svc = TestRequestService(db, current_user)
     branch_id = svc.branch_id
 
-    q = db.query(TestRequest).filter(TestRequest.status == "paid")
+    tz_offset = timezone(timedelta(hours=1))  # Nigeria UTC+1, matches Patient/Result services
+    now_local = datetime.now(tz_offset)
+    today_start_local = now_local.replace(hour=0, minute=0, second=0, microsecond=0)
+    today_end_local = today_start_local + timedelta(days=1)
+    today_start_utc = today_start_local.astimezone(timezone.utc).replace(tzinfo=None)
+    today_end_utc = today_end_local.astimezone(timezone.utc).replace(tzinfo=None)
+
+    base_q = db.query(TestRequest).filter(TestRequest.status == "paid")
     if branch_id:
-        q = q.filter(TestRequest.branch_id == branch_id)
+        base_q = base_q.filter(TestRequest.branch_id == branch_id)
+
+    if scope == "late":
+        q = base_q.filter(TestRequest.created_at < today_start_utc)
+    else:
+        q = base_q.filter(TestRequest.created_at >= today_start_utc, TestRequest.created_at < today_end_utc)
+
     requests = q.order_by(TestRequest.created_at.asc()).all()
+
+    # Always computed, regardless of scope — feeds the "Late Requests (N)"
+    # button's badge so backlog is never invisible.
+    late_count = base_q.filter(TestRequest.created_at < today_start_utc).count()
 
     # Group by patient
     priority_rank = {"emergency": 0, "urgent": 1, "active": 2, "normal": 3}
@@ -203,7 +230,7 @@ def lab_queue(
     # LIFO ordering within each tier survives the second pass.
     result.sort(key=lambda x: x["earliest"] or "", reverse=True)
     result.sort(key=lambda x: priority_rank.get(x["priority"], 3))
-    return result
+    return {"patients": result, "late_count": late_count, "scope": scope}
 
 
 
