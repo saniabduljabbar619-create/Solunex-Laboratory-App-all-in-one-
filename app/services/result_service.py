@@ -202,10 +202,15 @@ class ResultService:
 
             if phone:
                 try:
+                    from app.services.barcode_service import get_portal_qr_url
+                    suffix = (patient.patient_no or "").split("-")[-1] if patient and patient.patient_no else ""
+                    login_url = get_portal_qr_url(phone=phone, patient_no=patient.patient_no if patient else "")
                     sms_message = (
                         f"Dear {patient_name}, your test result is ready.\n"
-                        f"Ref: {r.id}\n"
-                        f"visit : https://iandelaboratory.com/lookup to download or view"
+                        f"Login to view/download:\n"
+                        f"Username: {phone}\n"
+                        f"Password: {suffix}\n"
+                        f"{login_url}"
                     )
                     NotificationService.send_sms(phone=phone, message=sms_message)
                 except Exception as sms_error:
@@ -241,6 +246,9 @@ class ResultService:
                 pass  # bad date string → ignore filter rather than error the whole list
 
         total = q.count()
+        # Default stays "desc" (unchanged) — history_tab.py, result_tab.py, and Lab's
+        # review/editor views all rely on the existing most-recent-first behavior.
+        # order="asc" is opt-in, used by the Cashier notification bell for FIFO.
         order_fn = asc if (order or "").lower() == "asc" else desc
         rows = q.order_by(order_fn(TestResult.created_at)).offset(offset).limit(limit).all()
         return rows, total
@@ -303,11 +311,16 @@ class ResultService:
                     message=f"{count} result(s) ready for {patient_name}",
                     reference_type="patient", reference_id=patient.id,
                 )
+                suffix = (patient.patient_no or "").split("-")[-1] if patient.patient_no else ""
+                from app.services.barcode_service import get_portal_qr_url
+                login_url = get_portal_qr_url(phone=patient.phone, patient_no=patient.patient_no or "")
                 sms_message = (
                     f"Dear {patient_name}, your result{'s' if count != 1 else ''} "
                     f"for {count} test{'s' if count != 1 else ''} {'are' if count != 1 else 'is'} ready.\n"
-                    f"Login ID: {patient.patient_no}\n"
-                    f"Visit https://iandelaboratory.com/lookup to view or download."
+                    f"Login to view/download:\n"
+                    f"Username: {patient.phone}\n"
+                    f"Password: {suffix}\n"
+                    f"{login_url}"
                 )
                 NotificationService.send_sms(phone=patient.phone, message=sms_message)
                 sms_sent = True

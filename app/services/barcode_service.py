@@ -83,6 +83,36 @@ def _placeholder_image(w: int, h: int, label: str) -> Image.Image:
     return img
 
 
-def get_portal_result_url(sync_id: str, base_url: str = "https://portal.solunex.ng") -> str:
-    """Builds the portal URL that the QR code will encode."""
-    return f"{base_url}/results/{sync_id}"
+def get_portal_qr_url(phone: str, patient_no: str, base_url: str = "https://iandelaboratory.com") -> str:
+    """
+    Builds the portal URL the QR code encodes.
+
+    Previously pointed to /results/{sync_id} — broken two ways: that route
+    expects an integer result id, not a sync_id (UUID), AND it requires an
+    active login cookie regardless, so an anonymous scan would just bounce
+    to /lookup anyway. Now points there directly, pre-filled with the
+    patient's phone + patient-number suffix so scanning is a one-step
+    login instead of a dead link.
+
+    The suffix is derived the same way app/web/routes/portal_ui.py's
+    login_action() reconstructs it (f"IEL-{year}-{suffix}") — whatever
+    comes after the second hyphen in patient_no, e.g. "IEL-26-0001" -> "0001".
+    """
+    from urllib.parse import quote
+
+    # patient_row uses "-" as a placeholder for a missing phone — don't embed that.
+    clean_phone = (phone or "").strip()
+    if clean_phone == "-":
+        clean_phone = ""
+
+    parts = (patient_no or "").split("-", 2)
+    suffix = parts[-1] if len(parts) >= 3 else (patient_no or "")
+
+    if not clean_phone or not suffix:
+        return f"{base_url.rstrip('/')}/lookup"
+
+    return (
+        f"{base_url.rstrip('/')}/lookup"
+        f"?phone={quote(clean_phone)}"
+        f"&patient_suffix={quote(suffix)}"
+    )

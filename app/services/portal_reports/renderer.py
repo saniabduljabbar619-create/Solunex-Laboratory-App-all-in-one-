@@ -131,7 +131,7 @@ def render_pdf(
     scientist_name: str = None,
     scientist_qualification: str = None,
     sas_assisted: bool = False,
-    portal_base_url: str = "https://portal.solunex.ng",
+    portal_base_url: str = "https://iandelaboratory.com",
 ):
     out = Path(output_path)
     out.parent.mkdir(parents=True, exist_ok=True)
@@ -353,25 +353,55 @@ def render_pdf(
     c.drawCentredString(stamp_x + stamp_w / 2, row_bottom + stamp_h / 2, "Official Lab Stamp")
     c.setFillColor(colors.black)
 
+    # Credential reminder in the gap between stamp and QR — the report is
+    # then self-sufficient for portal login even without the SMS. Right-
+    # aligned so it reads naturally leading into the QR code beside it.
+    cred_name = patient_row.get("Name", "-")
+    cred_phone = patient_row.get("Phone", "-")
+    cred_pid = patient_row.get("Patient ID", "-")
+    cred_suffix = cred_pid.split("-")[-1] if cred_pid and cred_pid != "-" else "-"
+    cred_right = qr_x - 4 * mm
+
+    c.setFont("Helvetica-Bold", 6.5)
+    c.setFillColor(colors.HexColor("#1E3A5F"))
+    c.drawRightString(cred_right, row_top - 4 * mm, "Portal Login")
+    c.setFont("Helvetica", 6.2)
+    c.setFillColor(colors.black)
+    c.drawRightString(cred_right, row_top - 10 * mm, f"User: {cred_phone}")
+    c.drawRightString(cred_right, row_top - 15 * mm, f"Pass: {cred_suffix}")
+    c.setFont("Helvetica-Oblique", 5.5)
+    c.setFillColor(colors.grey)
+    name_short = cred_name if len(cred_name) <= 20 else cred_name[:18] + "…"
+    c.drawRightString(cred_right, row_bottom + 2 * mm, name_short)
+    c.setFillColor(colors.black)
+
     # ──────────── QR CODE — RIGHT, same row as stamp + signature above ────────────
-    if result_sync_id:
-        try:
-            from app.services.barcode_service import generate_qr, get_portal_result_url
-            qr_url = get_portal_result_url(result_sync_id, base_url=portal_base_url)
-            qr_img = generate_qr(qr_url, box_size=3, border=1)
-            qr_reader = _pil_to_reader(qr_img)
-            c.drawImage(
-                qr_reader,
-                qr_x,
-                row_bottom,
-                qr_size, qr_size,
-            )
-            c.setFont("Helvetica", 6)
-            c.setFillColor(colors.grey)
-            c.drawString(qr_x, row_bottom - 2 * mm, "Scan to verify result online")
-            c.setFillColor(colors.black)
-        except Exception as e:
-            print(f"[PDF] QR error: {e}")
+    # Points at the login page, pre-filled with phone + patient-number suffix
+    # so scanning is a one-step login, not just a bare link the patient still
+    # has to type their details into. A per-result deep link would just
+    # redirect to /lookup anyway (no session cookie when scanning a printed
+    # page), so pre-filling the login itself is the actual useful behavior.
+    try:
+        from app.services.barcode_service import generate_qr, get_portal_qr_url
+        qr_url = get_portal_qr_url(
+            phone=patient_row.get("Phone", ""),
+            patient_no=patient_row.get("Patient ID", ""),
+            base_url=portal_base_url,
+        )
+        qr_img = generate_qr(qr_url, box_size=3, border=1)
+        qr_reader = _pil_to_reader(qr_img)
+        c.drawImage(
+            qr_reader,
+            qr_x,
+            row_bottom,
+            qr_size, qr_size,
+        )
+        c.setFont("Helvetica", 6)
+        c.setFillColor(colors.grey)
+        c.drawString(qr_x, row_bottom - 2 * mm, "Scan to verify result online")
+        c.setFillColor(colors.black)
+    except Exception as e:
+        print(f"[PDF] QR error: {e}")
 
     # ──────────── FOOTER ────────────
     # ──────────── FOOTER (clinical notes only) ────────────

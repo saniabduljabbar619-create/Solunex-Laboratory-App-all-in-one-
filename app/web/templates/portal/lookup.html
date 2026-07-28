@@ -1,201 +1,260 @@
-{% extends "layouts/portal_base.html" %}
-
-{% block content %}
+<!DOCTYPE html>
+<html lang="en">
+<head>
+<meta charset="UTF-8">
+<meta name="viewport" content="width=device-width, initial-scale=1.0">
+<title>Patient Sign In — Solunex Health Portal</title>
 <style>
-    /* Modern Prefix Input Styling */
-    .input-group-prefix {
-        display: flex;
-        align-items: stretch;
-        background: #ffffff;
-        border: 1.5px solid #cbd5e1;
-        border-radius: 8px;
-        overflow: hidden;
-        transition: border-color 0.2s, box-shadow 0.2s;
-        height: 45px;
-    }
+:root {
+  --primary: #1E3A5F; --accent: #0D9488; --accent-dim: #CCFBF1;
+  --bg: #F0F4F8; --card: #FFFFFF; --text: #1F2937; --muted: #6B7280;
+  --border: #E5E7EB; --danger: #DC2626; --danger-bg: #FEE2E2;
+  --font: -apple-system, BlinkMacSystemFont, 'Segoe UI', Roboto, sans-serif;
+}
+*, *::before, *::after { box-sizing: border-box; margin: 0; padding: 0; }
+html { -webkit-font-smoothing: antialiased; }
+body { font-family: var(--font); min-height: 100vh; display: flex; background: var(--bg); }
 
-    .input-group-prefix:focus-within {
-        border-color: #2563eb;
-        box-shadow: 0 0 0 3px rgba(37, 99, 235, 0.1);
-    }
+/* LEFT PANEL */
+.panel-left {
+  width: 45%; background: linear-gradient(135deg, var(--primary) 0%, #2C5F8A 60%, #0D9488 100%);
+  display: flex; flex-direction: column; padding: 48px; position: relative; overflow: hidden;
+}
+.panel-left::before {
+  content: '⬡'; position: absolute; bottom: -40px; right: -40px;
+  font-size: 20rem; opacity: 0.06; color: white; line-height: 1;
+}
+.panel-left::after {
+  content: '⬡'; position: absolute; top: -60px; left: -60px;
+  font-size: 16rem; opacity: 0.04; color: white; line-height: 1;
+}
 
-    .prefix-label {
-        display: flex;
-        align-items: center;
-        padding: 0 14px;
-        background: #f1f5f9;
-        color: #475569;
-        font-weight: 800;
-        font-size: 14px;
-        border-right: 1px solid #cbd5e1;
-        user-select: none;
-    }
+.brand { display: flex; align-items: center; gap: 12px; margin-bottom: 64px; z-index: 1; }
+.brand-icon {
+  width: 44px; height: 44px; background: rgba(255,255,255,0.15);
+  border-radius: 12px; display: flex; align-items: center; justify-content: center;
+  color: white; font-size: 22px; font-weight: 900; backdrop-filter: blur(4px);
+}
+.brand-name { color: white; font-size: 1.2rem; font-weight: 800; }
+.brand-sub { color: rgba(255,255,255,0.65); font-size: 0.7rem; font-weight: 600;
+  text-transform: uppercase; letter-spacing: 0.1em; }
 
-    .input-group-prefix input {
-        border: none !important;
-        flex: 1;
-        padding: 0 12px;
-        font-weight: 600;
-        font-size: 15px;
-        color: #0f172a;
-        outline: none !important;
-    }
+.panel-hero { flex: 1; display: flex; flex-direction: column; justify-content: center; z-index: 1; }
+.panel-hero h1 {
+  color: white; font-size: 2.25rem; font-weight: 900;
+  letter-spacing: -0.03em; line-height: 1.15; margin-bottom: 20px;
+}
+.panel-hero h1 span { color: #14B8A6; }
+.panel-hero p { color: rgba(255,255,255,0.75); font-size: 1rem; line-height: 1.7; max-width: 360px; }
 
-    .input-group-prefix input::placeholder {
-        color: #94a3b8;
-        font-weight: 400;
-    }
+.panel-features { margin-top: 48px; z-index: 1; }
+.panel-feature {
+  display: flex; align-items: flex-start; gap: 14px;
+  margin-bottom: 22px; color: rgba(255,255,255,0.85);
+}
+.feature-icon {
+  width: 36px; height: 36px; background: rgba(255,255,255,0.1);
+  border-radius: 10px; display: flex; align-items: center; justify-content: center;
+  font-size: 1rem; flex-shrink: 0; backdrop-filter: blur(4px);
+}
+.feature-text strong { display: block; font-size: 0.85rem; font-weight: 700; color: white; margin-bottom: 3px; }
+.feature-text span { font-size: 0.78rem; opacity: 0.75; line-height: 1.5; }
 
-    /* Tighten up the form-group spacing */
-    .form-group {
-        margin-bottom: 20px;
-        text-align: left;
-    }
+/* RIGHT PANEL */
+.panel-right {
+  flex: 1; display: flex; align-items: center; justify-content: center;
+  padding: 48px 64px;
+}
+.login-box { width: 100%; max-width: 400px; }
 
-    .form-group label {
-        display: block;
-        margin-bottom: 6px;
-        font-weight: 700;
-        font-size: 13px;
-        color: #475569;
-    }
+.login-header { margin-bottom: 36px; }
+.login-header h2 { font-size: 1.75rem; font-weight: 900; color: var(--text); letter-spacing: -0.02em; }
+.login-header p { color: var(--muted); font-size: 0.9rem; margin-top: 8px; line-height: 1.6; }
 
-    /* Page layout — centered card, matches Solunex Portal visual language */
-    .portal-container {
-        display: flex;
-        align-items: center;
-        justify-content: center;
-        min-height: calc(100vh - var(--nav-h) - 90px);
-        padding: 40px 20px;
-    }
+.form-group { margin-bottom: 20px; }
+.form-label {
+  display: block; font-size: 0.75rem; font-weight: 700; color: var(--muted);
+  text-transform: uppercase; letter-spacing: 0.06em; margin-bottom: 8px;
+}
+.form-input-wrap { position: relative; }
+.form-input-icon {
+  position: absolute; left: 14px; top: 50%; transform: translateY(-50%);
+  color: var(--muted); font-size: 1rem; pointer-events: none;
+}
+.form-input {
+  width: 100%; padding: 13px 14px 13px 42px;
+  border: 1.5px solid var(--border); border-radius: 10px;
+  font-size: 0.95rem; font-family: var(--font); color: var(--text);
+  background: white; outline: none; transition: all 0.2s;
+}
+.form-input:focus { border-color: var(--accent); box-shadow: 0 0 0 3px rgba(13,148,136,0.12); }
+.form-input::placeholder { color: #CBD5E1; }
 
-    .portal-card {
-        background: var(--slx-card);
-        border: 1px solid var(--slx-border);
-        border-radius: var(--r);
-        box-shadow: var(--s2);
-        padding: 40px;
-        width: 100%;
-        max-width: 440px;
-        text-align: center;
-    }
+.input-hint {
+  font-size: 0.75rem; color: var(--muted); margin-top: 6px;
+  padding-left: 2px; display: flex; align-items: center; gap: 4px;
+}
 
-    .portal-card h2 {
-        font-size: 1.5rem;
-        font-weight: 900;
-        color: var(--slx-text);
-        letter-spacing: -0.02em;
-        margin-bottom: 10px;
-    }
+.btn-login {
+  width: 100%; padding: 14px; background: var(--accent); color: white;
+  border: none; border-radius: 10px; font-size: 0.95rem; font-weight: 800;
+  cursor: pointer; transition: all 0.2s; display: flex;
+  align-items: center; justify-content: center; gap: 8px; margin-top: 8px;
+  letter-spacing: 0.02em;
+}
+.btn-login:hover {
+  background: #0F766E; transform: translateY(-1px);
+  box-shadow: 0 8px 20px rgba(13,148,136,0.3);
+}
+.btn-login:active { transform: translateY(0); }
 
-    .portal-card .subtitle {
-        color: var(--slx-muted);
-        font-size: 0.9rem;
-        line-height: 1.6;
-        margin-bottom: 28px;
-    }
+.login-divider {
+  text-align: center; color: var(--muted); font-size: 0.8rem;
+  margin: 24px 0; position: relative;
+}
+.login-divider::before, .login-divider::after {
+  content: ''; position: absolute; top: 50%;
+  width: calc(50% - 40px); height: 1px; background: var(--border);
+}
+.login-divider::before { left: 0; }
+.login-divider::after { right: 0; }
 
-    .portal-form {
-        text-align: left;
-    }
+.login-links { text-align: center; }
+.login-links a {
+  color: var(--accent); font-size: 0.85rem; font-weight: 600;
+  text-decoration: none; transition: opacity 0.15s;
+}
+.login-links a:hover { opacity: 0.75; }
 
-    .portal-form input[type="tel"],
-    .portal-form input[type="text"] {
-        width: 100%;
-        height: 45px;
-        padding: 0 14px;
-        border: 1.5px solid var(--slx-border);
-        border-radius: var(--rs);
-        font-size: 0.95rem;
-        font-family: var(--font);
-        color: var(--slx-text);
-        outline: none;
-        transition: border-color 0.2s, box-shadow 0.2s;
-    }
+.error-alert {
+  background: var(--danger-bg); border: 1.5px solid #FECACA;
+  border-left: 4px solid var(--danger); border-radius: 10px;
+  padding: 14px 16px; color: var(--danger);
+  font-size: 0.875rem; font-weight: 600;
+  display: flex; align-items: center; gap: 10px; margin-bottom: 24px;
+}
 
-    .portal-form input:focus {
-        border-color: var(--slx-accent);
-        box-shadow: 0 0 0 3px var(--slx-accent-dim);
-    }
+.security-note {
+  margin-top: 32px; padding-top: 24px; border-top: 1px solid var(--border);
+  text-align: center; color: var(--muted); font-size: 0.75rem; line-height: 1.7;
+}
 
-    .portal-form .btn-primary {
-        width: 100%;
-        margin-top: 8px;
-    }
-
-    .security-note {
-        margin-top: 24px;
-        padding-top: 20px;
-        border-top: 1px solid var(--slx-border);
-        color: var(--slx-muted);
-        font-size: 0.75rem;
-        line-height: 1.6;
-    }
-
-    @media (max-width: 480px) {
-        .portal-card { padding: 28px 22px; }
-    }
-
+/* Responsive */
+@media (max-width: 768px) {
+  body { flex-direction: column; }
+  .panel-left { width: 100%; padding: 32px 24px; min-height: 280px; }
+  .panel-hero h1 { font-size: 1.75rem; }
+  .panel-features { display: none; }
+  .panel-right { padding: 32px 24px; }
+}
 </style>
+</head>
+<body>
 
-<div class="portal-container">
-
-    <div class="portal-card">
-        <h2>Patient Result Portal</h2>
-        <p class="subtitle">
-            Sign in using your registered phone number and the last 4 digits of your patient number.
-        </p>
-
-        <form method="post" action="/login" class="portal-form">
-
-            <div class="form-group">
-                <label>Phone Number</label>
-                <input 
-                    type="tel" 
-                    name="phone" 
-                    placeholder="e.g. 08012345678"
-                    required>
-            </div>
-
-            <div class="form-group">
-                <label>Patient Number</label>
-                <div class="input-group-prefix">
-                    <span class="prefix-label" id="yearPrefix">IEL-26-</span>
-                    <input 
-                        type="text" 
-                        name="patient_suffix" 
-                        placeholder="e.g. 3150"
-                        maxlength="5"
-                        inputmode="numeric"
-                        required>
-                </div>
-            </div>
-
-            <button type="submit" class="btn-primary">
-                Sign In & View Results
-            </button>
-
-        </form>
-
-        {% if error %}
-        <div class="sx-alert error" style="margin-top:20px;">
-            {{ error }}
-        </div>
-        {% endif %}
-
-        <div class="security-note">
-            Your login credentials are encrypted and securely processed by I & E Laboratory Systems.
-        </div>
+<!-- LEFT PANEL -->
+<div class="panel-left">
+  <div class="brand">
+    <div class="brand-icon">⬡</div>
+    <div>
+      <div class="brand-name">Solunex</div>
+      <div class="brand-sub">Health Portal</div>
     </div>
+  </div>
 
+  <div class="panel-hero">
+    <h1>Your Health.<br><span>Your Results.</span><br>Anytime.</h1>
+    <p>Access your complete laboratory history, download official results, and track your health journey — all in one secure place.</p>
+  </div>
+
+  <div class="panel-features">
+    <div class="panel-feature">
+      <div class="feature-icon">⬡</div>
+      <div class="feature-text">
+        <strong>SSFO-Organized Results</strong>
+        <span>Results automatically grouped by category — Haematology, Biochemistry, and more</span>
+      </div>
+    </div>
+    <div class="panel-feature">
+      <div class="feature-icon">🔒</div>
+      <div class="feature-text">
+        <strong>Secure & Private</strong>
+        <span>Your data belongs to you. Brute-force protected, encrypted sessions</span>
+      </div>
+    </div>
+    <div class="panel-feature">
+      <div class="feature-icon">📄</div>
+      <div class="feature-text">
+        <strong>Professional PDFs</strong>
+        <span>Download verified result reports with QR authentication codes</span>
+      </div>
+    </div>
+  </div>
 </div>
 
-<script>
-    // Automatically update the prefix year to match the current date
-    document.addEventListener('DOMContentLoaded', function() {
-        const year = new Date().getFullYear().toString().slice(-2);
-        document.getElementById('yearPrefix').textContent = `IEL-${year}-`;
-    });
-</script>
+<!-- RIGHT PANEL -->
+<div class="panel-right">
+  <div class="login-box">
 
-{% endblock %}
+    <div class="login-header">
+      <h2>Sign In to Portal</h2>
+      <p>Enter your registered phone number and patient ID to access your results</p>
+    </div>
+
+    {% if error %}
+    <div class="error-alert">
+      ⚠ {{ error }}
+    </div>
+    {% endif %}
+
+    <form method="POST" action="/login">
+
+      <div class="form-group">
+        <label class="form-label">Phone Number</label>
+        <div class="form-input-wrap">
+          <span class="form-input-icon">📱</span>
+          <input
+            type="tel" name="phone" class="form-input"
+            placeholder="e.g. 08031234567" required
+            autocomplete="tel" value="{{ phone or '' }}"
+          >
+        </div>
+        <div class="input-hint">ℹ The phone number used during registration</div>
+      </div>
+
+      <div class="form-group">
+        <label class="form-label">Patient ID Number</label>
+        <div class="form-input-wrap">
+          <span class="form-input-icon">🪪</span>
+          <input
+            type="text" name="patient_suffix" class="form-input"
+            placeholder="e.g. 4268" required
+            autocomplete="off" inputmode="numeric" value="{{ patient_suffix or '' }}"
+          >
+        </div>
+        <div class="input-hint">ℹ The number on your result slip (e.g. IEL-26-<strong>4268</strong>)</div>
+      </div>
+
+      <button type="submit" class="btn-login">
+        🔐 &nbsp; Access My Results
+      </button>
+
+    </form>
+
+    <div class="login-divider">or</div>
+
+    <div class="login-links">
+      <a href="/book">Book a New Test</a>
+      &nbsp;&nbsp;·&nbsp;&nbsp;
+      <a href="/contact">Need Help?</a>
+    </div>
+
+    <div class="security-note">
+      🔒 Sessions expire after 15 minutes for your security.<br>
+      Your data is never shared. Powered by Solunex Technologies.
+    </div>
+
+  </div>
+</div>
+
+</body>
+</html>

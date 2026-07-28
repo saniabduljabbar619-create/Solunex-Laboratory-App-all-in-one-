@@ -42,10 +42,10 @@ lab_profile = LAB_PROFILE
 # LOOKUP (Login Page)
 # ===============================
 @router.get("/lookup", response_class=HTMLResponse)
-def login_page(request: Request):
+def login_page(request: Request, phone: str = None, patient_suffix: str = None):
     return templates.TemplateResponse(
         "portal/lookup.html",
-        {"request": request}
+        {"request": request, "phone": phone, "patient_suffix": patient_suffix}
     )
 
 
