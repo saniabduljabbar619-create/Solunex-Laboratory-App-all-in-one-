@@ -1,3 +1,5 @@
+# app\web\deps.py
+
 from fastapi import Cookie, HTTPException
 from sqlalchemy.orm import Session
 
@@ -17,9 +19,12 @@ def get_current_admin(admin_token: str | None = Cookie(default=None)):
         raise HTTPException(status_code=401)
 
     db: Session = SessionLocal()
-    user = db.query(User).filter(User.id == int(payload["sub"])).first()
+    try:
+        user = db.query(User).filter(User.id == int(payload["sub"])).first()
 
-    if not user or not user.is_active:
-        raise HTTPException(status_code=401)
+        if not user or not user.is_active:
+            raise HTTPException(status_code=401)
 
-    return user
+        return user
+    finally:
+        db.close()
