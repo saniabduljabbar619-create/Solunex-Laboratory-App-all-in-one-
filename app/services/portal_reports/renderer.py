@@ -90,7 +90,9 @@ def _draw_header(c, lab_profile, w, h):
     email = lab_profile.get("email", "")
 
     c.setFont("Helvetica-Bold", 15)
+    c.setFillColor(colors.HexColor("#1A6B3C"))
     c.drawCentredString(w / 2, top_y, lab_name)
+    c.setFillColor(colors.black)
 
     c.setFont("Helvetica", 9)
     y_txt = top_y - 5 * mm
@@ -241,7 +243,7 @@ def render_pdf(
                 ("FONTSIZE",   (0, 0), (-1, -1), 8),
                 ("GRID",       (0, 0), (-1, -1), 0.3, colors.grey),
                 ("VALIGN",     (0, 0), (-1, -1), "MIDDLE"),
-                ("ALIGN",      (1, 1), (-1, -1), "CENTER"),
+                ("ALIGN",      (1, 1), (-1, -1), "LEFT"),
                 ("ROWBACKGROUNDS", (0, 1), (-1, -1), [colors.white, colors.HexColor("#F7F9FC")]),
             ]
 
@@ -293,7 +295,7 @@ def render_pdf(
                     ("FONTSIZE",   (0, 0), (-1, -1), 8),
                     ("VALIGN",     (0, 0), (-1, -1), "MIDDLE"),
                     ("ALIGN",      (0, 0), ( 0, -1), "LEFT"),
-                    ("ALIGN",      (1, 0), (-1, -1), "CENTER"),
+                    ("ALIGN",      (1, 0), (-1, -1), "LEFT"),
                     ("ROWBACKGROUNDS", (0, 1), (-1, -1),
                      [colors.white, colors.HexColor("#F7F9FC")]),
                 ]))
