@@ -58,10 +58,57 @@ def generate_receipt_pdf(db, payment: Payment) -> Path:
     if payment.created_by:
         cashier_name = getattr(payment.created_by, "username", "") or ""
 
-    # Height estimate: header + items + totals + footer
-    base = 120 * mm
-    item_h = 6 * mm * max(len(line_items), 1)
-    height = base + item_h
+    # ── Exact height calculation ──
+    # The old code used a fixed "base = 120mm" guess, which was almost always
+    # bigger than the content actually drawn. Since every element is drawn
+    # starting from the TOP of the page and stepping downward, that excess
+    # became blank space stranded at the BOTTOM of the page — which is what
+    # printed as a long blank gap before/around the actual receipt content.
+    # Instead, sum up exactly the vertical space every block below will use,
+    # using the same conditions that gate each draw call.
+    addr = LAB_PROFILE.get("address", "")
+    addr_lines = _wrap(addr, 44)
+    phone = LAB_PROFILE.get("phone", "").replace("|", "").strip()
+    logo = LAB_PROFILE.get("logo_path")
+
+    kv_count = 2  # Receipt No, Date (always drawn)
+    if patient:
+        kv_count += 2  # Patient, Patient No
+    if lab_number:
+        kv_count += 1
+    if cashier_name:
+        kv_count += 1
+
+    discount_amount_est = max(
+        sum(item["price"] for item in line_items) - float(payment.amount or 0), 0
+    )
+
+    top_margin = 8 * mm
+    bottom_margin = 6 * mm
+
+    content_h = 0.0
+    if logo:
+        content_h += 16 * mm + 3 * mm          # logo image + gap
+    content_h += 4 * mm                        # lab name
+    content_h += 3 * mm * len(addr_lines)      # address lines
+    if phone:
+        content_h += 3 * mm                    # phone
+    content_h += 2 * mm + 5 * mm               # gaps around header separator
+    content_h += 6 * mm                        # title
+    content_h += 4 * mm * kv_count             # meta rows
+    content_h += 1 * mm + 5 * mm               # gaps around meta separator
+    content_h += 4 * mm                        # item header row
+    content_h += 4 * mm * max(len(line_items), 1) if line_items else 0
+    content_h += 1 * mm + 5 * mm               # gaps around items separator
+    if discount_amount_est > 0:
+        content_h += 4.5 * mm * 2              # subtotal + discount
+    content_h += 4.5 * mm                      # total paid
+    content_h += 6 * mm                        # method line
+    content_h += 5 * mm                        # gap before footer separator
+    content_h += 4 * mm                        # "thank you" line
+    content_h += 4 * mm                        # "powered by" line
+
+    height = top_margin + content_h + bottom_margin
 
     out_dir = Path("generated_reports")
     out_dir.mkdir(exist_ok=True)
@@ -72,7 +119,6 @@ def generate_receipt_pdf(db, payment: Payment) -> Path:
     y = height - 8 * mm
 
     # ── Logo ──
-    logo = LAB_PROFILE.get("logo_path")
     if logo:
         try:
             from reportlab.lib.utils import ImageReader
@@ -88,11 +134,9 @@ def generate_receipt_pdf(db, payment: Payment) -> Path:
     # ── Header ──
     _draw_center(c, cx, y, LAB_PROFILE.get("lab_name", "Laboratory")[:38], "Helvetica-Bold", 7.5)
     y -= 4 * mm
-    addr = LAB_PROFILE.get("address", "")
-    for chunk in _wrap(addr, 44):
+    for chunk in addr_lines:
         _draw_center(c, cx, y, chunk, "Helvetica", 6)
         y -= 3 * mm
-    phone = LAB_PROFILE.get("phone", "").replace("|", "").strip()
     if phone:
         _draw_center(c, cx, y, phone, "Helvetica", 6)
         y -= 3 * mm
