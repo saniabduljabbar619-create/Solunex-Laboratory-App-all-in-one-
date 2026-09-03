@@ -207,14 +207,19 @@ def render_pdf(
     # ──────────── RESULTS ────────────
     for rid, payload in bundle_results.items():
         test_name = payload.get("request", {}).get("test_name", "Test")
-        y = _ensure_space(c, y, 20 * mm, h, lab_profile, w)
-
-        c.setFont("Helvetica-Bold", 10)
-        c.setFillColor(colors.black)
-        c.drawString(15 * mm, y, test_name)
-        y -= 6 * mm
-
         typ = payload.get("type")
+        heading_h = 6 * mm
+        heading_drawn = False
+
+        def _draw_heading():
+            # Local helper so both branches below draw the heading the
+            # same way, right after the space check that accounts for it.
+            nonlocal y, heading_drawn
+            c.setFont("Helvetica-Bold", 10)
+            c.setFillColor(colors.black)
+            c.drawString(15 * mm, y, test_name)
+            y -= heading_h
+            heading_drawn = True
 
         # ── STRUCTURED RESULT ──
         if typ == "structured":
@@ -259,8 +264,16 @@ def render_pdf(
                     style.append(("TEXTCOLOR", (4, row_idx), (4, row_idx), colors.HexColor("#E87722")))
 
             tbl.setStyle(TableStyle(style))
-            tw, th = tbl.wrapOn(c, w - 30 * mm, y)
-            y = _ensure_space(c, y, th + 10 * mm, h, lab_profile, w)
+            # Measure the table BEFORE drawing anything — availHeight is
+            # just the full page height here since we're only using this
+            # to get the table's natural (unsplit) height, not to fit it.
+            tw, th = tbl.wrapOn(c, w - 30 * mm, h)
+
+            # Reserve heading + table TOGETHER. If they don't both fit,
+            # page-break now, before the heading is drawn, so the two
+            # can never end up split across pages.
+            y = _ensure_space(c, y, heading_h + th + 10 * mm, h, lab_profile, w)
+            _draw_heading()
             tbl.drawOn(c, 15 * mm, y - th)
             y -= th + 8 * mm
 
@@ -274,13 +287,7 @@ def render_pdf(
                     continue
 
                 title = section_grid.get("title", "")
-                if title:
-                    y = _ensure_space(c, y, 12 * mm, h, lab_profile, w)
-                    c.setFont("Helvetica-BoldOblique", 8)
-                    c.setFillColor(colors.HexColor("#2C5F8A"))
-                    c.drawString(15 * mm, y, f"[{title}]")
-                    c.setFillColor(colors.black)
-                    y -= 5 * mm
+                title_h = 5 * mm if title else 0
 
                 ncols = max(len(r) for r in cells)
                 padded = [r + [""] * (ncols - len(r)) for r in cells]
@@ -300,10 +307,46 @@ def render_pdf(
                      [colors.white, colors.HexColor("#F7F9FC")]),
                 ]))
 
-                tw, th = tbl.wrapOn(c, w - 30 * mm, y)
-                y = _ensure_space(c, y, th + 5 * mm, h, lab_profile, w)
+                # Measure this section's table before committing to
+                # anything above it, same principle as the structured
+                # branch: page-break ahead of the heading/title, never
+                # in between it and its own table.
+                tw, th = tbl.wrapOn(c, w - 30 * mm, h)
+
+                needed = title_h + th + 10 * mm
+                if not heading_drawn:
+                    # First section in this test also carries the outer
+                    # test-name heading — bundle its height into the
+                    # same space check so heading + title + table all
+                    # move to the next page together, never separately.
+                    needed += heading_h
+
+                y = _ensure_space(c, y, needed, h, lab_profile, w)
+
+                if not heading_drawn:
+                    _draw_heading()
+
+                if title:
+                    c.setFont("Helvetica-BoldOblique", 8)
+                    c.setFillColor(colors.HexColor("#2C5F8A"))
+                    c.drawString(15 * mm, y, f"[{title}]")
+                    c.setFillColor(colors.black)
+                    y -= title_h
+
                 tbl.drawOn(c, 15 * mm, y - th)
                 y -= th + 10 * mm
+
+            if not heading_drawn:
+                # No section had any cells — still show the heading so a
+                # test entry never silently disappears from the report.
+                y = _ensure_space(c, y, heading_h + 4 * mm, h, lab_profile, w)
+                _draw_heading()
+
+        else:
+            # Unknown/unsupported payload type — still print the heading
+            # rather than dropping the test entry entirely.
+            y = _ensure_space(c, y, heading_h + 4 * mm, h, lab_profile, w)
+            _draw_heading()
 
         # Separator between tests
         c.setStrokeColor(colors.lightgrey)

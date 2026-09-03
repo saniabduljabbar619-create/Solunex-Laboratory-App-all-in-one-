@@ -76,7 +76,7 @@ def instantiate_from_snapshot(
 @router.post("/bundle-report")
 def bundle_report(
     payload: dict,
-    current_user: User = Depends(get_current_user),
+    current_user=Depends(get_current_user),
     db: Session = Depends(get_db),
 ):
     """Render multiple results for the SAME patient into one combined PDF."""
