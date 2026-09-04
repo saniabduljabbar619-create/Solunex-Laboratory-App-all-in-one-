@@ -139,6 +139,8 @@ class TestRequestService:
                     "full_name": p.full_name,
                     "phone": p.phone,
                     "gender": p.gender,
+                    "age_value": p.age_value,
+                    "age_unit": p.age_unit,
                     "dob": p.date_of_birth.isoformat() if p.date_of_birth else None,
                     "referrer_id": p.referrer_id,
                     "created_at": iso_date,
