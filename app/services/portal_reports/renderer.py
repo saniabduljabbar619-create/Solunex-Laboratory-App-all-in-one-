@@ -108,11 +108,24 @@ def _draw_header(c, lab_profile, w, h):
     c.line(15 * mm, h - 42 * mm, w - 15 * mm, h - 42 * mm)
 
 
+def _draw_continuation_header(c, w, page_height):
+    """
+    Continuation pages (page 2+) do NOT repeat the full letterhead — logo,
+    lab name, address, contact — that's only meaningful once, at the top
+    of page 1. Just leave a slim top margin with a divider so multi-page
+    reports don't waste space (or look like a new document) on every page.
+    """
+    top_y = page_height - 15 * mm
+    c.setStrokeColor(colors.lightgrey)
+    c.setLineWidth(0.5)
+    c.line(15 * mm, top_y, w - 15 * mm, top_y)
+
+
 def _ensure_space(c, y, needed, page_height, lab_profile, w):
     if y - needed < 35 * mm:
         c.showPage()
-        _draw_header(c, lab_profile, w, page_height)
-        return page_height - 50 * mm
+        _draw_continuation_header(c, w, page_height)
+        return page_height - 20 * mm
     return y
 
 
@@ -170,39 +183,42 @@ def render_pdf(
     reported = patient_row.get("Reported", "-")
     released = patient_row.get("Released", "-")
 
-    c.setFont("Helvetica-Bold", 11)
+    c.setFont("Helvetica-Bold", 14)
     c.drawString(15 * mm, h - 48 * mm, "Patient Report")
 
     # SAS badge
     if sas_assisted:
         c.setFont("Helvetica-Bold", 7)
         c.setFillColor(colors.HexColor("#1A6B3C"))
-        c.drawString(15 * mm, h - 53 * mm, "⬡ SAS ASSISTED")
+        c.drawString(15 * mm, h - 54 * mm, "⬡ SAS ASSISTED")
         c.setFillColor(colors.black)
 
-    # Row 1 — identity
-    c.setFont("Helvetica", 9)
-    c.drawString(15 * mm, h - 57 * mm, f"Name:       {name}")
-    c.drawString(15 * mm, h - 61 * mm, f"Patient ID: {pid}")
-    c.drawString(80 * mm, h - 57 * mm, f"Sex: {sex}")
-    c.drawString(80 * mm, h - 61 * mm, f"Age: {age}")
-    c.drawString(w - 75 * mm, h - 57 * mm, f"Lab Number:  {lab_number}")
+    # Row 1 — identity (Name/Sex/Lab Number, then Patient ID/Age) — bumped
+    # from 9pt to 13pt so it's clearly legible on a printed page; the extra
+    # vertical gaps below (10mm/7mm vs the old 9mm/4mm) are what keep the
+    # bigger glyphs from touching each other or the title above.
+    c.setFont("Helvetica", 13)
+    c.drawString(15 * mm, h - 58 * mm, f"Name:       {name}")
+    c.drawString(15 * mm, h - 65 * mm, f"Patient ID: {pid}")
+    c.drawString(80 * mm, h - 58 * mm, f"Sex: {sex}")
+    c.drawString(80 * mm, h - 65 * mm, f"Age: {age}")
+    c.drawString(w - 75 * mm, h - 58 * mm, f"Lab Number:  {lab_number}")
 
     # Row 2 — accountability timeline (the metadata chain)
     c.setFont("Helvetica", 7.5)
     c.setFillColor(colors.HexColor("#555555"))
-    c.drawString(15 * mm, h - 66 * mm, f"Requested: {requested}")
-    c.drawString(80 * mm, h - 66 * mm, f"Reported: {reported}")
-    c.drawString(w - 75 * mm, h - 66 * mm, f"Released: {released}")
+    c.drawString(15 * mm, h - 71 * mm, f"Requested: {requested}")
+    c.drawString(80 * mm, h - 71 * mm, f"Reported: {reported}")
+    c.drawString(w - 75 * mm, h - 71 * mm, f"Released: {released}")
     c.setFillColor(colors.black)
 
     # Divider below patient block (below the timeline row)
     c.setStrokeColor(colors.lightgrey)
     c.setLineWidth(0.5)
-    c.line(15 * mm, h - 70 * mm, w - 15 * mm, h - 70 * mm)
+    c.line(15 * mm, h - 75 * mm, w - 15 * mm, h - 75 * mm)
 
     # Table starts below the divider
-    y = h - 77 * mm
+    y = h - 82 * mm
 
     # ──────────── RESULTS ────────────
     for rid, payload in bundle_results.items():
@@ -398,27 +414,12 @@ def render_pdf(
     c.drawCentredString(stamp_x + stamp_w / 2, row_bottom + stamp_h / 2, "Official Lab Stamp")
     c.setFillColor(colors.black)
 
-    # Credential reminder in the gap between stamp and QR — the report is
-    # then self-sufficient for portal login even without the SMS. Right-
-    # aligned so it reads naturally leading into the QR code beside it.
-    cred_name = patient_row.get("Name", "-")
-    cred_phone = patient_row.get("Phone", "-")
-    cred_pid = patient_row.get("Patient ID", "-")
-    cred_suffix = cred_pid.split("-")[-1] if cred_pid and cred_pid != "-" else "-"
-    cred_right = qr_x - 4 * mm
+    # Note: the plaintext "Portal Login / User / Pass" block that used to
+    # sit here was removed — it was redundant (and a needless exposure of
+    # the patient's login credential in plain text on paper) since the QR
+    # code below is already pre-filled with phone + patient number for a
+    # one-step login. Scanning it gets you there without reading anything.
 
-    c.setFont("Helvetica-Bold", 6.5)
-    c.setFillColor(colors.HexColor("#1E3A5F"))
-    c.drawRightString(cred_right, row_top - 4 * mm, "Portal Login")
-    c.setFont("Helvetica", 6.2)
-    c.setFillColor(colors.black)
-    c.drawRightString(cred_right, row_top - 10 * mm, f"User: {cred_phone}")
-    c.drawRightString(cred_right, row_top - 15 * mm, f"Pass: {cred_suffix}")
-    c.setFont("Helvetica-Oblique", 5.5)
-    c.setFillColor(colors.grey)
-    name_short = cred_name if len(cred_name) <= 20 else cred_name[:18] + "…"
-    c.drawRightString(cred_right, row_bottom + 2 * mm, name_short)
-    c.setFillColor(colors.black)
 
     # ──────────── QR CODE — RIGHT, same row as stamp + signature above ────────────
     # Points at the login page, pre-filled with phone + patient-number suffix
