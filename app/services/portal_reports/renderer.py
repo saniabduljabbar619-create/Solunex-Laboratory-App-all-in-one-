@@ -183,42 +183,50 @@ def render_pdf(
     reported = patient_row.get("Reported", "-")
     released = patient_row.get("Released", "-")
 
-    c.setFont("Helvetica-Bold", 14)
+    c.setFont("Helvetica-Bold", 12)
     c.drawString(15 * mm, h - 48 * mm, "Patient Report")
 
     # SAS badge
     if sas_assisted:
         c.setFont("Helvetica-Bold", 7)
         c.setFillColor(colors.HexColor("#1A6B3C"))
-        c.drawString(15 * mm, h - 54 * mm, "⬡ SAS ASSISTED")
+        c.drawString(15 * mm, h - 53 * mm, "⬡ SAS ASSISTED")
         c.setFillColor(colors.black)
 
-    # Row 1 — identity (Name/Sex/Lab Number, then Patient ID/Age) — bumped
-    # from 9pt to 13pt so it's clearly legible on a printed page; the extra
-    # vertical gaps below (10mm/7mm vs the old 9mm/4mm) are what keep the
-    # bigger glyphs from touching each other or the title above.
-    c.setFont("Helvetica", 13)
-    c.drawString(15 * mm, h - 58 * mm, f"Name:       {name}")
+    # Name gets its OWN full-width line — a fixed-position "Sex:" field
+    # sharing a row with Name (the previous layout) collided with it for
+    # any long name, since column widths were tuned for short names only.
+    # A dedicated line has no neighbor to collide with, at any length.
+    c.setFont("Helvetica", 11)
+    c.drawString(15 * mm, h - 58 * mm, f"Name: {name}")
+
+    # Patient ID / Sex / Lab Number — short, fixed-format fields, safe to
+    # keep on one row. Columns spaced generously (15 / 90 / w-70mm) so
+    # even a full "Patient ID: IEL-26-9999" or "Sex: Female" can't reach
+    # its neighbor.
     c.drawString(15 * mm, h - 65 * mm, f"Patient ID: {pid}")
-    c.drawString(80 * mm, h - 58 * mm, f"Sex: {sex}")
-    c.drawString(80 * mm, h - 65 * mm, f"Age: {age}")
-    c.drawString(w - 75 * mm, h - 58 * mm, f"Lab Number:  {lab_number}")
+    c.drawString(90 * mm, h - 65 * mm, f"Sex: {sex}")
+    c.drawString(w - 70 * mm, h - 65 * mm, f"Lab Number: {lab_number}")
+
+    # Age — its own line too; age values now range from "9 mos" up to
+    # multi-word forms, so give it the same isolation as Name.
+    c.drawString(15 * mm, h - 72 * mm, f"Age: {age}")
 
     # Row 2 — accountability timeline (the metadata chain)
     c.setFont("Helvetica", 7.5)
     c.setFillColor(colors.HexColor("#555555"))
-    c.drawString(15 * mm, h - 71 * mm, f"Requested: {requested}")
-    c.drawString(80 * mm, h - 71 * mm, f"Reported: {reported}")
-    c.drawString(w - 75 * mm, h - 71 * mm, f"Released: {released}")
+    c.drawString(15 * mm, h - 78 * mm, f"Requested: {requested}")
+    c.drawString(80 * mm, h - 78 * mm, f"Reported: {reported}")
+    c.drawString(w - 75 * mm, h - 78 * mm, f"Released: {released}")
     c.setFillColor(colors.black)
 
     # Divider below patient block (below the timeline row)
     c.setStrokeColor(colors.lightgrey)
     c.setLineWidth(0.5)
-    c.line(15 * mm, h - 75 * mm, w - 15 * mm, h - 75 * mm)
+    c.line(15 * mm, h - 82 * mm, w - 15 * mm, h - 82 * mm)
 
     # Table starts below the divider
-    y = h - 82 * mm
+    y = h - 89 * mm
 
     # ──────────── RESULTS ────────────
     for rid, payload in bundle_results.items():
