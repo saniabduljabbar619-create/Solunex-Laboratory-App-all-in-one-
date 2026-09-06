@@ -64,6 +64,16 @@ def _flag_color(state: str):
 
 
 # --------------------------------------------------
+# RESULTS TABLE HEADER — sky blue, one place so the structured-result
+# table and the grid/section tables can never drift apart in color again.
+# Text is dark navy rather than white, since white would lose contrast
+# against a light background.
+# --------------------------------------------------
+TABLE_HEADER_BG = colors.HexColor("#87CEEB")     # sky blue
+TABLE_HEADER_TEXT = colors.HexColor("#0B3C5D")   # dark navy — readable on sky blue
+
+
+# --------------------------------------------------
 # HEADER
 # --------------------------------------------------
 
@@ -78,9 +88,9 @@ def _draw_header(c, lab_profile, w, h):
             if pil_img.mode not in ("RGB", "RGBA"):
                 pil_img = pil_img.convert("RGB")
             img = ImageReader(pil_img)
-            size = 18 * mm
-            c.drawImage(img, 15 * mm, h - 35 * mm, size, size, mask="auto")
-            c.drawImage(img, w - 15 * mm - size, h - 35 * mm, size, size, mask="auto")
+            size = 24 * mm
+            c.drawImage(img, 15 * mm, h - 38 * mm, size, size, mask="auto")
+            c.drawImage(img, w - 15 * mm - size, h - 38 * mm, size, size, mask="auto")
         except Exception as e:
             print(f"[PDF] Logo error: {e}")
 
@@ -266,10 +276,10 @@ def render_pdf(
             tbl = Table(data, colWidths=[62 * mm, 25 * mm, 22 * mm, 33 * mm, 18 * mm])
 
             style = [
-                ("BACKGROUND", (0, 0), (-1, 0), colors.HexColor("#2C5F8A")),
-                ("TEXTCOLOR",  (0, 0), (-1, 0), colors.white),
+                ("BACKGROUND", (0, 0), (-1, 0), TABLE_HEADER_BG),
+                ("TEXTCOLOR",  (0, 0), (-1, 0), TABLE_HEADER_TEXT),
                 ("FONT",       (0, 0), (-1, 0), "Helvetica-Bold"),
-                ("FONTSIZE",   (0, 0), (-1, -1), 8),
+                ("FONTSIZE",   (0, 0), (-1, -1), 10),
                 ("GRID",       (0, 0), (-1, -1), 0.3, colors.grey),
                 ("VALIGN",     (0, 0), (-1, -1), "MIDDLE"),
                 ("ALIGN",      (1, 1), (-1, -1), "LEFT"),
@@ -321,9 +331,9 @@ def render_pdf(
                 tbl.setStyle(TableStyle([
                     ("GRID",       (0, 0), (-1, -1), 0.3, colors.grey),
                     ("FONT",       (0, 0), (-1,  0), "Helvetica-Bold"),
-                    ("BACKGROUND", (0, 0), (-1,  0), colors.HexColor("#2C5F8A")),
-                    ("TEXTCOLOR",  (0, 0), (-1,  0), colors.white),
-                    ("FONTSIZE",   (0, 0), (-1, -1), 8),
+                    ("BACKGROUND", (0, 0), (-1,  0), TABLE_HEADER_BG),
+                    ("TEXTCOLOR",  (0, 0), (-1,  0), TABLE_HEADER_TEXT),
+                    ("FONTSIZE",   (0, 0), (-1, -1), 10),
                     ("VALIGN",     (0, 0), (-1, -1), "MIDDLE"),
                     ("ALIGN",      (0, 0), ( 0, -1), "LEFT"),
                     ("ALIGN",      (1, 0), (-1, -1), "LEFT"),
