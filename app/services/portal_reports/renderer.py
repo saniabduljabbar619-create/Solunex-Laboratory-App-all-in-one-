@@ -69,8 +69,8 @@ def _flag_color(state: str):
 # Text is dark navy rather than white, since white would lose contrast
 # against a light background.
 # --------------------------------------------------
-TABLE_HEADER_BG = colors.HexColor("#87CEEB")     # sky blue
-TABLE_HEADER_TEXT = colors.HexColor("#0B3C5D")   # dark navy — readable on sky blue
+TABLE_HEADER_BG = colors.HexColor("#D9D9D9")     # light grey, matching the older report template
+TABLE_HEADER_TEXT = colors.black
 
 
 # --------------------------------------------------
